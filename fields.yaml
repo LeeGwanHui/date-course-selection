@@ -1,0 +1,41 @@
+# 데이트 코스 선정 요인 조사용 필드 정의
+# 각 요인(item)을 아래 6개 측면으로 깊이 조사한다.
+field_categories:
+  - category: overview
+    fields:
+      - name: basic_info
+        description: 요인이 무엇인지 정의 + 왜 좋은 데이트 코스에 중요한지 한두 줄. 다른 요인과 기제가 겹칠 경우 어떻게 다른지 명시.
+        detail_level: brief
+        required: true
+
+  - category: rationale
+    fields:
+      - name: psychology
+        description: 이 요인이 작동하는 심리학적/관계학적 근거와 이론·연구 (예 self-expansion, peak-end rule, excitation transfer, phubbing 연구 등). 가능하면 연구자·연도 명시.
+        detail_level: detailed
+        required: true
+
+  - category: application
+    fields:
+      - name: how_to_apply
+        description: 실제로 데이트 코스를 짤 때 이 요인을 적용하는 구체적 실천법·팁. 즉시 실행 가능한 액션 위주.
+        detail_level: detailed
+        required: true
+      - name: common_mistakes
+        description: 이 요인과 관련해 흔히 저지르는 실수·안티패턴 (과용·오남용 포함).
+        detail_level: moderate
+        required: false
+      - name: examples
+        description: 이 요인을 실제 코스에 녹인 구체적 예시 1~3개 (상황 + 어떻게 반영했는지).
+        detail_level: moderate
+        required: false
+
+  - category: sources
+    fields:
+      - name: evidence
+        description: 근거 출처·연구 링크 목록 (제목 + URL). 심리 근거와 실용 자료를 구분해 표기.
+        detail_level: moderate
+        required: false
+
+# Reserved. /research-deep 가 항목별 불확실 필드를 자동 채움.
+uncertain: []

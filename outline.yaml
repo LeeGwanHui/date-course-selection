@@ -1,0 +1,61 @@
+topic: 사랑 받고 좋은 시간을 보내는 데이트 코스를 선정하는 방법
+topic_slug: date_course_selection
+items:
+  # --- 준비 단계 요인 ---
+  - name: 상대방 취향 파악
+    category: 준비
+    description: 좋아함/싫어함·알레르기·활동성 수준·식이 제약을 사전 파악해 코스의 토대로 삼기
+  - name: 예산 적정성
+    category: 준비
+    description: 부담 없으면서도 성의가 느껴지는 지출 수준을 관계 단계에 맞게 정하기
+  - name: 관계 단계 맞춤
+    category: 준비
+    description: 첫 데이트 vs 오래된 커플 등 관계 단계에 따라 코스 강도·친밀도를 조정
+
+  # --- 동선·구성 요인 ---
+  - name: 동선·장소 근접성
+    category: 동선·구성
+    description: 이동을 최소화하고 한 방향으로 흐르게 배치해 피로와 낭비 시간 줄이기
+  - name: 활동의 다양성·완급
+    category: 동선·구성
+    description: 정적+동적 활동을 조합해 지루함을 막고 리듬 있는 흐름 만들기
+  - name: 시간대·타이밍
+    category: 동선·구성
+    description: 노을·식사 시간·붐빔 회피 등 각 장소의 최적 시간에 맞춰 순서 잡기
+  - name: 날씨·계절 대응
+    category: 동선·구성
+    description: 실내외 대비와 Plan B로 날씨·계절 변수를 관리
+
+  # --- 심리·감성 요인 ---
+  - name: 분위기·무드
+    category: 심리·감성
+    description: 조명·소음·프라이버시 등 감성 요소로 편안하고 설레는 무드 조성
+  - name: 대화 기회 설계
+    category: 심리·감성
+    description: 마주 앉기·활동 후 대화 등 자연스러운 대화 상황을 물리적으로 확보
+  - name: 새로움·설렘(novelty)
+    category: 심리·감성
+    description: 새로운 경험이 self-expansion을 통해 관계 만족도를 높이는 효과 활용
+  - name: 개인화·서프라이즈
+    category: 심리·감성
+    description: 상대 취향을 반영한 작은 감동 요소로 특별함과 배려 신호 주기
+
+  # --- 마무리 요인 ---
+  - name: 추억·기록 남기기
+    category: 마무리
+    description: 사진·기념품 등 함께한 흔적을 남겨 데이트 후에도 여운 유지
+
+  # --- 신규 근거 기반 요인 ---
+  - name: 안전·안심 설계
+    category: 안전·토대
+    description: 공공장소 선정·위치 공유·음주 수위·이탈 계획 등 심리적 안전의 토대 (첫 데이트·초기 단계 필수)
+  - name: 코스 순서·피날레(Peak-End Rule)
+    category: 구조·마무리
+    description: 가장 강렬한 이벤트를 마지막에 배치해 전체 데이트 인상을 극대화 (Kahneman peak-end rule)
+  - name: 온전한 집중·폰 사용 관리(Anti-Phubbing)
+    category: 심리·감성
+    description: 파트너 퍼빙을 줄이는 몰입형·핸즈온 활동을 우선해 만족도 방어 (2024~26 연구)
+execution:
+  batch_size: 4
+  items_per_agent: 2
+  output_dir: ./results
