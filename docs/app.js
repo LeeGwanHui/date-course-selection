@@ -103,6 +103,18 @@ function collectFactorSlugs(course) {
   return out;
 }
 
+function renderOutfit(course) {
+  const o = course.outfit;
+  if (!o || !o.items || !o.items.length) return "";
+  const head = "👔 복장" + (o.formula ? ` · ${esc(o.formula)}` : "");
+  const bits = [`<div class="outfit-head">${head}</div>`];
+  bits.push(`<div class="outfit-items">${esc(o.items.join(" + "))}</div>`);
+  for (const sw of o.swaps || []) bits.push(`<div class="outfit-swap">⚠️ ${esc(sw)}</div>`);
+  if (o.why) bits.push(`<div class="outfit-why">↳ ${esc(o.why)}</div>`);
+  if (o.checks && o.checks.length) bits.push(`<div class="outfit-check">✓ ${esc(o.checks.join(" · "))}</div>`);
+  return `<div class="outfit">${bits.join("")}</div>`;
+}
+
 function renderFactorChips(course, factorMap) {
   if (!factorMap || factorMap.size === 0) return "";
   const slugs = collectFactorSlugs(course).filter((s) => factorMap.has(s));
@@ -132,6 +144,7 @@ function renderCourse(course, idx, factorMap) {
 ${stopsHtml}
     </ul>
     ${footerBits.join("")}
+    ${renderOutfit(course)}
     ${renderFactorChips(course, factorMap)}
   </section>`;
 }
