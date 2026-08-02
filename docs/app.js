@@ -9,6 +9,18 @@
 
 const BADGE = { peak: ["🎯", "피크"], finale: ["🏁", "피날레"] };
 
+/* 부엌 — SPA 라우팅 밖의 독립 정적 페이지. 늘어나면 여기에 한 줄 추가한다.
+   ⚠️ sw.js의 navigate 예외(`/kitchen/`)와 짝이다. 경로를 바꾸면 거기도 같이 고칠 것 —
+      예외가 없으면 SW가 앱 셸을 돌려줘서 링크를 눌러도 이 홈이 다시 뜬다. */
+const KITCHEN = [
+  {
+    href: "kitchen/mosu-steak-2026-08-02.html",
+    date: "2026-08-02",
+    title: "집마카세 · 모수식 스테이크",
+    meta: "인덕션 · 30초 사이클 타이머 내장",
+  },
+];
+
 function esc(s) {
   if (s === null || s === undefined) return "";
   return String(s)
@@ -166,17 +178,25 @@ function renderArchive(index) {
   document.title = "우리 데이트 기록";
   const courses = (index && index.courses) || [];
   const head = `${nav([["?f", "💡 심리 근거 가이드"]])}<h1>💞 우리 데이트 기록</h1>`;
+  const kitchen = KITCHEN.length
+    ? `<p class="subtitle" style="margin-top:26px">🍳 부엌 ${KITCHEN.length}개</p>\n` +
+      KITCHEN.map((k) => `<a class="arch-card" href="${esc(k.href)}">
+      <div class="date">${esc(k.date || "")}</div>
+      <div class="t">🍳 ${esc(k.title || "")}</div>
+      ${k.meta ? `<div class="m">${esc(k.meta)}</div>` : ""}
+    </a>`).join("\n")
+    : "";
   if (!courses.length) {
     return head + `<p class="subtitle">아직 저장된 코스가 없어요.</p>
       <div class="empty"><p>코스를 만들면 여기에 하나씩 쌓여 지난 데이트를 다시 볼 수 있어요.</p>
-      <p class="hint">저장: <code>save_course.py</code></p></div>`;
+      <p class="hint">저장: <code>save_course.py</code></p></div>` + kitchen;
   }
   const cards = courses.map((c) => `<a class="arch-card" href="?c=${encodeURIComponent(c.slug)}">
       <div class="date">${esc(c.date || "")}</div>
       <div class="t">${esc(c.title || "데이트 코스")}</div>
       ${c.meta ? `<div class="m">${esc(c.meta)}</div>` : ""}
     </a>`).join("\n");
-  return head + `<p class="subtitle">지난 코스 ${courses.length}개</p>\n${cards}`;
+  return head + `<p class="subtitle">지난 코스 ${courses.length}개</p>\n${cards}` + kitchen;
 }
 
 function factorBlock(label, text) {
