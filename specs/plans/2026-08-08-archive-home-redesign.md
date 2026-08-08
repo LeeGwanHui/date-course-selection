@@ -1070,6 +1070,200 @@ title에 섞여 있던 날짜와 이모지를 date/emoji 필드로 분리했다.
 
 ---
 
+### Task 7: `save_course.py` 병합 업서트 (재실행 안전성)
+
+> **실행 순서: Task 6보다 먼저 한다.** Task 6이 이 동작을 `CLAUDE.md`에 문서화한다.
+> Task 5 리뷰에서 발견된 결함이라 번호가 뒤에 붙었을 뿐이다.
+
+**Files:**
+- Modify: `save_course.py`
+- Modify: `tests/test_save_course.py`
+
+**문제:** `main()`의 업서트가 기존 항목을 **통째로 교체**한다
+(`[c for c in index["courses"] if c["slug"] != slug] + [entry]`). `build_entry`는 매번
+새 dict를 만들고 `--region`/`--tags`/`--emoji`를 안 주면 그 키를 넣지 않는다. 따라서
+플래그를 빠뜨린 재저장 한 번이면 백필한 `region`/`tags`/`emoji`가 조용히 사라지고,
+부엌 항목이라면 `kind`/`href`까지 없어져 링크가 깨진다.
+
+**Interfaces:**
+- Consumes: Task 1의 `build_entry`
+- Produces:
+  - `CARRIED: tuple[str, ...]` — 재저장 때 물려받을 키들
+  - `build_entry(data, slug, date, region=None, tags=None, emoji=None, prev=None) -> dict`
+    — `prev`는 같은 slug의 기존 항목(없으면 `None`)
+
+- [ ] **Step 1: 실패하는 테스트 추가**
+
+`tests/test_save_course.py`의 단위 테스트 마지막(`test_build_entry_includes_optional_fields_when_given` 뒤)에 붙인다:
+
+```python
+def test_build_entry_carries_prev_fields_when_flags_omitted():
+    prev = {
+        "slug": "s", "region": "홍대", "tags": ["실내"], "emoji": "🔓",
+        "kind": "kitchen", "href": "kitchen/a.html",
+    }
+    entry = save_course.build_entry({"title": "T"}, "s", "2026-08-08", prev=prev)
+    assert entry["region"] == "홍대"
+    assert entry["tags"] == ["실내"]
+    assert entry["emoji"] == "🔓"
+    assert entry["kind"] == "kitchen"
+    assert entry["href"] == "kitchen/a.html"
+
+
+def test_build_entry_flags_win_over_prev():
+    prev = {"slug": "s", "region": "홍대", "tags": ["실내"], "emoji": "🔓"}
+    entry = save_course.build_entry(
+        {"title": "T"}, "s", "2026-08-08",
+        region="신사", tags=["카페"], emoji="☕", prev=prev,
+    )
+    assert entry["region"] == "신사"
+    assert entry["tags"] == ["카페"]
+    assert entry["emoji"] == "☕"
+
+
+def test_build_entry_without_prev_is_unchanged():
+    entry = save_course.build_entry({"title": "T"}, "s", "2026-08-08")
+    assert "region" not in entry
+    assert "tags" not in entry
+    assert "emoji" not in entry
+    assert "kind" not in entry
+    assert "href" not in entry
+
+
+def test_build_entry_refreshes_title_meta_from_course_json():
+    """title/meta는 물려받지 않는다 — 코스 JSON이 바뀌면 아카이브에도 반영돼야 한다."""
+    prev = {"slug": "s", "title": "옛 제목", "meta": "옛 메타", "region": "홍대"}
+    entry = save_course.build_entry(
+        {"title": "새 제목", "meta": "새 메타"}, "s", "2026-08-08", prev=prev)
+    assert entry["title"] == "새 제목"
+    assert entry["meta"] == "새 메타"
+    assert entry["region"] == "홍대"      # 이건 물려받는다
+```
+
+그리고 CLI 통합 테스트 마지막에 붙인다:
+
+```python
+def test_cli_resave_without_flags_keeps_archive_fields(tmp_path):
+    sandbox = _sandbox(tmp_path)
+    course = tmp_path / "course.json"
+    _write_course(course, title="1차")
+    assert _run(sandbox, course, "--slug", "x", "--date", "2026-08-08",
+                "--region", "홍대", "--tags", "실내", "--emoji", "🔓").returncode == 0
+
+    # 플래그를 빠뜨린 재저장 — 아카이브 메타가 살아남아야 한다
+    _write_course(course, title="2차")
+    assert _run(sandbox, course, "--slug", "x", "--date", "2026-08-08").returncode == 0
+
+    e = json.loads((sandbox / "docs" / "courses" / "index.json").read_text(encoding="utf-8"))["courses"][0]
+    assert e["title"] == "2차"        # 코스 JSON에서 새로 온다
+    assert e["region"] == "홍대"       # 물려받는다
+    assert e["tags"] == ["실내"]
+    assert e["emoji"] == "🔓"
+```
+
+- [ ] **Step 2: 테스트가 실패하는지 확인**
+
+Run: `python3 -m pytest tests/test_save_course.py -v`
+Expected: 기존 11개 PASS, 새 5개 중 `test_build_entry_without_prev_is_unchanged`만 PASS
+(그건 현재 동작과 같다), 나머지 4개는 FAIL — `build_entry`가 `prev` 인자를 모른다
+
+- [ ] **Step 3: `save_course.py`에 `CARRIED`와 `prev` 병합을 넣는다**
+
+`TAGS = (...)` 블록 아래에 상수를 추가한다:
+
+```python
+# 재저장 때 물려받을 아카이브 전용 키들. 코스 JSON에는 없고 index.json에만 사는 값이라,
+# 플래그를 빠뜨린 재저장이 이걸 지워버리면 백필한 메타가 통째로 날아간다.
+CARRIED = ("region", "tags", "emoji", "kind", "href")
+```
+
+`build_entry`를 아래로 교체한다:
+
+```python
+def build_entry(data, slug, date, region=None, tags=None, emoji=None, prev=None):
+    """index.json 한 항목. 선택 필드는 값이 있을 때만 넣는다 —
+       없는 항목도 홈에서 기존 카드 모양으로 폴백되게 하기 위해서다.
+       prev(같은 slug의 기존 항목)가 있으면 이번에 안 준 아카이브 메타는 물려받는다.
+       title/meta는 물려받지 않는다 — 코스 JSON이 바뀌면 아카이브에도 반영돼야 한다."""
+    entry = {
+        "slug": slug,
+        "title": data.get("title", "데이트 코스"),
+        "meta": data.get("meta", ""),
+        "date": date,
+        "added": dt.datetime.now().isoformat(timespec="seconds"),
+    }
+    if region:
+        entry["region"] = region
+    if tags:
+        entry["tags"] = tags
+    if emoji:
+        entry["emoji"] = emoji
+    for key in CARRIED:
+        if key not in entry and prev and prev.get(key):
+            entry[key] = prev[key]
+    entry["has_outfit"] = derive_has_outfit(data)
+    return entry
+```
+
+- [ ] **Step 4: `main()`이 기존 항목을 찾아 넘기게 한다**
+
+`entry = build_entry(...)` 호출을 아래 두 줄로 바꾼다:
+
+```python
+    prev = next((c for c in index["courses"] if c["slug"] == slug), None)
+    entry = build_entry(data, slug, date,
+                        region=args.region, tags=tags, emoji=args.emoji, prev=prev)
+```
+
+- [ ] **Step 5: 테스트 통과 확인**
+
+Run: `python3 -m pytest tests/test_save_course.py -v`
+Expected: PASS (16 passed)
+
+- [ ] **Step 6: 실제 아카이브가 재저장을 견디는지 확인**
+
+리포의 진짜 `index.json`을 건드리지 않고, 복사본으로 확인한다:
+
+```bash
+python3 - <<'PY'
+import json, os, shutil, subprocess, sys, tempfile
+root = os.getcwd()
+tmp = tempfile.mkdtemp()
+shutil.copy(os.path.join(root, "save_course.py"), os.path.join(tmp, "save_course.py"))
+os.makedirs(os.path.join(tmp, "docs", "courses"))
+shutil.copy(os.path.join(root, "docs/courses/index.json"), os.path.join(tmp, "docs/courses/index.json"))
+src = os.path.join(root, "docs/courses/qingdao-2026-08.json")
+r = subprocess.run([sys.executable, os.path.join(tmp, "save_course.py"), src,
+                    "--slug", "qingdao-2026-08", "--date", "2026-08-14"],
+                   capture_output=True, text=True)
+print("rc", r.returncode, r.stdout.strip(), r.stderr.strip())
+idx = json.load(open(os.path.join(tmp, "docs/courses/index.json"), encoding="utf-8"))
+e = next(c for c in idx["courses"] if c["slug"] == "qingdao-2026-08")
+print("region", e.get("region"), "| tags", e.get("tags"), "| emoji", e.get("emoji"))
+k = next(c for c in idx["courses"] if c["slug"] == "mosu-steak-2026-08-02")
+print("kitchen kind", k.get("kind"), "| href", k.get("href"))
+PY
+```
+Expected: `region 칭다오 | tags ['여행', '맛집', '야외'] | emoji 🍺` 와
+`kitchen kind kitchen | href kitchen/mosu-steak-2026-08-02.html`
+
+Run: `git status --short`
+Expected: `docs/courses/index.json` 변경 없음
+
+- [ ] **Step 7: 커밋**
+
+```bash
+git add save_course.py tests/test_save_course.py
+git commit -m "save_course.py 업서트를 병합으로 — 재저장이 아카이브 메타를 지우지 않게
+
+업서트가 항목을 통째로 교체해서, --region/--tags/--emoji 를 빠뜨린
+재저장 한 번이면 백필한 메타가 사라지고 부엌 항목은 kind/href까지
+잃어 링크가 깨졌다. CARRIED 키는 기존 항목에서 물려받고, 플래그를
+주면 그게 이긴다. title/meta는 코스 JSON에서 계속 새로 온다."
+```
+
+---
+
 ### Task 6: 브라우저 검증과 문서 갱신
 
 **Files:**
@@ -1122,7 +1316,7 @@ Expected: 변경 없음 (임시 항목을 지웠으므로)
 - [ ] **Step 4: 서버를 끄고 전체 테스트를 돌린다**
 
 Run: `python3 -m pytest tests/ -v && node --test tests/*.test.mjs`
-Expected: pytest 11 passed, node 15 tests pass
+Expected: pytest 16 passed, node 15 tests pass
 
 - [ ] **Step 5: `CLAUDE.md`를 갱신한다**
 
@@ -1135,7 +1329,7 @@ Expected: pytest 11 passed, node 15 tests pass
 같은 섹션의 `save_course.py` 줄을 고친다:
 
 ```
-  - `save_course.py course.json --slug … --date … [--region … --tags … --emoji …]` → writes `docs/courses/<slug>.json` + upserts `courses/index.json`. `--tags` is validated against the fixed `TAGS` vocabulary in the script (unknown tags are rejected); `has_outfit` is derived from the course JSON. ⚠️ archived courses are **public** on Pages (committed files); the URL-hash share link is the private option.
+  - `save_course.py course.json --slug … --date … [--region … --tags … --emoji …]` → writes `docs/courses/<slug>.json` + upserts `courses/index.json`. `--tags` is validated against the fixed `TAGS` vocabulary in the script (unknown tags are rejected); `has_outfit` is derived from the course JSON. **The upsert merges**: re-saving an existing slug without `--region`/`--tags`/`--emoji` keeps whatever that entry already had (as do `kind`/`href` for kitchen entries), so a forgotten flag can't wipe the archive metadata. `title`/`meta` always come fresh from the course JSON. ⚠️ archived courses are **public** on Pages (committed files); the URL-hash share link is the private option.
 ```
 
 같은 섹션 끝에 아카이브 항목 스키마를 설명하는 항목을 추가한다:
