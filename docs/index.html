@@ -20,9 +20,12 @@
   @media (prefers-color-scheme: dark) {
     :root { --bg:#1a161c; --card:#241f28; --ink:#f2ecf0; --muted:#a99fa8;
             --line:#3a3340; --accent:#ff7a90; }
+    .cover { background:linear-gradient(140deg, hsl(var(--hue) 44% 44%), hsl(var(--hue) 42% 32%)); }
   }
   :root[data-theme="light"] { --bg:#fbf7f5; --card:#fff; --ink:#2b2431; --muted:#7a6f78; --line:#ecdfe2; }
   :root[data-theme="dark"]  { --bg:#1a161c; --card:#241f28; --ink:#f2ecf0; --muted:#a99fa8; --line:#3a3340; --accent:#ff7a90; }
+  :root[data-theme="light"] .cover { background:linear-gradient(140deg, hsl(var(--hue) 60% 80%), hsl(var(--hue) 55% 64%)); }
+  :root[data-theme="dark"]  .cover { background:linear-gradient(140deg, hsl(var(--hue) 44% 44%), hsl(var(--hue) 42% 32%)); }
   * { box-sizing: border-box; }
   body { margin:0; padding:24px 16px 48px; background:var(--bg); color:var(--ink);
     font-family: -apple-system, "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", sans-serif;
@@ -72,13 +75,33 @@
   /* --- 상단 내비 --- */
   .topnav { display:flex; flex-wrap:wrap; gap:14px; margin-bottom:16px; font-size:.9rem; }
   .topnav a { color:var(--accent); text-decoration:none; }
-  /* --- 아카이브 카드 --- */
-  .arch-card { display:block; background:var(--card); border:1px solid var(--line);
-    border-radius:14px; padding:14px 16px; margin-bottom:12px; text-decoration:none; color:inherit;
+  /* --- 아카이브 카드(커버 + 본문 2단) --- */
+  .arch-card { display:flex; gap:12px; background:var(--card); border:1px solid var(--line);
+    border-radius:14px; padding:12px 14px; margin-bottom:12px; text-decoration:none; color:inherit;
     box-shadow:0 1px 3px rgba(0,0,0,.05); }
   .arch-card .date { color:var(--accent); font-weight:700; font-size:.82rem; font-variant-numeric:tabular-nums; }
   .arch-card .t { font-weight:600; font-size:1.05rem; margin-top:2px; }
   .arch-card .m { color:var(--muted); font-size:.85rem; margin-top:2px; }
+  .arch-body { min-width:0; }   /* flex 자식의 긴 텍스트가 카드를 밀지 않게 */
+  /* 커버 — 사진 대신 지역별 색으로 카드를 구분한다. --hue는 app.js의 regionHue가 넣는다. */
+  .cover { flex:0 0 62px; height:62px; border-radius:12px; display:flex;
+    align-items:center; justify-content:center; font-size:1.85rem; line-height:1;
+    background:linear-gradient(140deg, hsl(var(--hue) 60% 80%), hsl(var(--hue) 55% 64%)); }
+  .cover.no-region { background:linear-gradient(140deg, var(--line), var(--muted)); }
+  /* --- 카드 뱃지 --- */
+  .bdgs { display:flex; flex-wrap:wrap; gap:5px; margin-top:8px; }
+  .bdg { font-size:.72rem; padding:2px 8px; border-radius:999px;
+    border:1px solid var(--line); color:var(--muted); }
+  .bdg-region { border-color:transparent; color:#fff; background:hsl(var(--hue) 42% 46%); }
+  .bdg-icon { border-color:transparent; padding:2px 5px; }
+  /* --- 필터 칩 --- */
+  .fchips { display:flex; flex-wrap:wrap; gap:6px; margin:0 0 16px; }
+  a.fchip { font-size:.78rem; padding:4px 11px; border-radius:999px; text-decoration:none;
+    border:1px solid var(--line); color:var(--muted); background:transparent; }
+  a.fchip.on { border-color:var(--accent); color:#fff; background:var(--accent); }
+  /* --- 연도 헤딩(연도가 2개 이상일 때만 렌더된다) --- */
+  h2.year { font-size:.95rem; color:var(--muted); margin:24px 0 8px;
+    font-variant-numeric:tabular-nums; }
   /* --- 요인 상세 / 목록 --- */
   .factor-detail .cat { color:var(--muted); font-size:.8rem; }
   .factor-block { margin-top:16px; }
