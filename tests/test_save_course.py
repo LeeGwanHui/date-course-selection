@@ -58,6 +58,49 @@ def test_build_entry_includes_optional_fields_when_given():
     assert entry["has_outfit"] is True
 
 
+def test_build_entry_carries_prev_fields_when_flags_omitted():
+    prev = {
+        "slug": "s", "region": "홍대", "tags": ["실내"], "emoji": "🔓",
+        "kind": "kitchen", "href": "kitchen/a.html",
+    }
+    entry = save_course.build_entry({"title": "T"}, "s", "2026-08-08", prev=prev)
+    assert entry["region"] == "홍대"
+    assert entry["tags"] == ["실내"]
+    assert entry["emoji"] == "🔓"
+    assert entry["kind"] == "kitchen"
+    assert entry["href"] == "kitchen/a.html"
+
+
+def test_build_entry_flags_win_over_prev():
+    prev = {"slug": "s", "region": "홍대", "tags": ["실내"], "emoji": "🔓"}
+    entry = save_course.build_entry(
+        {"title": "T"}, "s", "2026-08-08",
+        region="신사", tags=["카페"], emoji="☕", prev=prev,
+    )
+    assert entry["region"] == "신사"
+    assert entry["tags"] == ["카페"]
+    assert entry["emoji"] == "☕"
+
+
+def test_build_entry_without_prev_is_unchanged():
+    entry = save_course.build_entry({"title": "T"}, "s", "2026-08-08")
+    assert "region" not in entry
+    assert "tags" not in entry
+    assert "emoji" not in entry
+    assert "kind" not in entry
+    assert "href" not in entry
+
+
+def test_build_entry_refreshes_title_meta_from_course_json():
+    """title/meta는 물려받지 않는다 — 코스 JSON이 바뀌면 아카이브에도 반영돼야 한다."""
+    prev = {"slug": "s", "title": "옛 제목", "meta": "옛 메타", "region": "홍대"}
+    entry = save_course.build_entry(
+        {"title": "새 제목", "meta": "새 메타"}, "s", "2026-08-08", prev=prev)
+    assert entry["title"] == "새 제목"
+    assert entry["meta"] == "새 메타"
+    assert entry["region"] == "홍대"      # 이건 물려받는다
+
+
 def _sandbox(tmp_path):
     """save_course.py를 임시 디렉터리로 복사한다.
        스크립트가 __file__ 기준으로 docs/courses 경로를 잡으므로,
@@ -142,3 +185,21 @@ def test_cli_upserts_same_slug(tmp_path):
     assert len(index["courses"]) == 1
     assert index["courses"][0]["title"] == "2차"
     assert index["courses"][0]["region"] == "홍대"
+
+
+def test_cli_resave_without_flags_keeps_archive_fields(tmp_path):
+    sandbox = _sandbox(tmp_path)
+    course = tmp_path / "course.json"
+    _write_course(course, title="1차")
+    assert _run(sandbox, course, "--slug", "x", "--date", "2026-08-08",
+                "--region", "홍대", "--tags", "실내", "--emoji", "🔓").returncode == 0
+
+    # 플래그를 빠뜨린 재저장 — 아카이브 메타가 살아남아야 한다
+    _write_course(course, title="2차")
+    assert _run(sandbox, course, "--slug", "x", "--date", "2026-08-08").returncode == 0
+
+    e = json.loads((sandbox / "docs" / "courses" / "index.json").read_text(encoding="utf-8"))["courses"][0]
+    assert e["title"] == "2차"        # 코스 JSON에서 새로 온다
+    assert e["region"] == "홍대"       # 물려받는다
+    assert e["tags"] == ["실내"]
+    assert e["emoji"] == "🔓"

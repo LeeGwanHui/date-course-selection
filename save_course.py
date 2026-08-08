@@ -36,6 +36,10 @@ TAGS = (
     "여행",                                                              # 규모(1박 이상)
 )
 
+# 재저장 때 물려받을 아카이브 전용 키들. 코스 JSON에는 없고 index.json에만 사는 값이라,
+# 플래그를 빠뜨린 재저장이 이걸 지워버리면 백필한 메타가 통째로 날아간다.
+CARRIED = ("region", "tags", "emoji", "kind", "href")
+
 
 def sanitize_slug(s):
     s = s.strip().lower()
@@ -62,9 +66,11 @@ def derive_has_outfit(data):
     return any(c.get("outfit") for c in data.get("courses", []))
 
 
-def build_entry(data, slug, date, region=None, tags=None, emoji=None):
+def build_entry(data, slug, date, region=None, tags=None, emoji=None, prev=None):
     """index.json 한 항목. 선택 필드는 값이 있을 때만 넣는다 —
-       없는 항목도 홈에서 기존 카드 모양으로 폴백되게 하기 위해서다."""
+       없는 항목도 홈에서 기존 카드 모양으로 폴백되게 하기 위해서다.
+       prev(같은 slug의 기존 항목)가 있으면 이번에 안 준 아카이브 메타는 물려받는다.
+       title/meta는 물려받지 않는다 — 코스 JSON이 바뀌면 아카이브에도 반영돼야 한다."""
     entry = {
         "slug": slug,
         "title": data.get("title", "데이트 코스"),
@@ -78,6 +84,9 @@ def build_entry(data, slug, date, region=None, tags=None, emoji=None):
         entry["tags"] = tags
     if emoji:
         entry["emoji"] = emoji
+    for key in CARRIED:
+        if key not in entry and prev and prev.get(key):
+            entry[key] = prev[key]
     entry["has_outfit"] = derive_has_outfit(data)
     return entry
 
@@ -132,8 +141,9 @@ def main():
     with open(os.path.join(COURSES_DIR, slug + ".json"), "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=1)
 
+    prev = next((c for c in index["courses"] if c["slug"] == slug), None)
     entry = build_entry(data, slug, date,
-                        region=args.region, tags=tags, emoji=args.emoji)
+                        region=args.region, tags=tags, emoji=args.emoji, prev=prev)
     index["courses"] = [c for c in index["courses"] if c["slug"] != slug] + [entry]
     # 날짜 내림차순(같으면 추가시각 내림차순)
     index["courses"].sort(key=lambda c: (c.get("date", ""), c.get("added", "")), reverse=True)
