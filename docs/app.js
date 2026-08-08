@@ -53,18 +53,6 @@ function groupByYear(entries) {
   return [...map.entries()].sort((a, b) => (a[0] < b[0] ? 1 : -1));
 }
 
-/* 부엌 — SPA 라우팅 밖의 독립 정적 페이지. 늘어나면 여기에 한 줄 추가한다.
-   ⚠️ sw.js의 navigate 예외(`/kitchen/`)와 짝이다. 경로를 바꾸면 거기도 같이 고칠 것 —
-      예외가 없으면 SW가 앱 셸을 돌려줘서 링크를 눌러도 이 홈이 다시 뜬다. */
-const KITCHEN = [
-  {
-    href: "kitchen/mosu-steak-2026-08-02.html",
-    date: "2026-08-02",
-    title: "집마카세 · 모수식 스테이크",
-    meta: "인덕션 · 30초 사이클 타이머 내장",
-  },
-];
-
 function esc(s) {
   if (s === null || s === undefined) return "";
   return String(s)
@@ -218,29 +206,66 @@ function nav(links) {
   return `<div class="topnav">${links.map(([href, label]) => `<a href="${href}">${label}</a>`).join("")}</div>`;
 }
 
-function renderArchive(index) {
+function renderArchCard(e) {
+  const emoji = esc(e.emoji || String(e.title || "?").trim().charAt(0));
+  const hue = e.region ? regionHue(e.region) : 0;
+  const coverCls = e.region ? "cover" : "cover no-region";
+
+  const badges = [];
+  if (e.region) badges.push(`<span class="bdg bdg-region">${esc(e.region)}</span>`);
+  for (const t of e.tags || []) badges.push(`<span class="bdg">${esc(t)}</span>`);
+  if (e.has_outfit) badges.push(`<span class="bdg bdg-icon">👔</span>`);
+  const bdgs = badges.length ? `<div class="bdgs">${badges.join("")}</div>` : "";
+
+  return `<a class="arch-card" href="${esc(entryHref(e))}" style="--hue:${hue}">
+      <div class="${coverCls}"><span>${emoji}</span></div>
+      <div class="arch-body">
+        <div class="date">${esc(e.date || "")}</div>
+        <div class="t">${esc(e.title || "데이트 코스")}</div>
+        ${e.meta ? `<div class="m">${esc(e.meta)}</div>` : ""}
+        ${bdgs}
+      </div>
+    </a>`;
+}
+
+function renderFilterChips(entries, filter) {
+  const { regions, tags } = collectFilterValues(entries);
+  if (!regions.length && !tags.length) return "";
+  const chip = (label, href, on) =>
+    `<a class="fchip${on ? " on" : ""}" href="${href}">${esc(label)}</a>`;
+  const isOn = (type, v) => !!filter && filter.type === type && filter.value === v;
+  const bits = [chip("전체", ".", !filter)];
+  for (const r of regions) bits.push(chip(r, "?r=" + encodeURIComponent(r), isOn("r", r)));
+  for (const t of tags) bits.push(chip(t, "?t=" + encodeURIComponent(t), isOn("t", t)));
+  return `<div class="fchips">${bits.join("")}</div>`;
+}
+
+function renderArchive(index, filter) {
   document.title = "우리 데이트 기록";
-  const courses = (index && index.courses) || [];
+  const all = (index && index.courses) || [];
   const head = `${nav([["?f", "💡 심리 근거 가이드"]])}<h1>💞 우리 데이트 기록</h1>`;
-  const kitchen = KITCHEN.length
-    ? `<p class="subtitle" style="margin-top:26px">🍳 부엌 ${KITCHEN.length}개</p>\n` +
-      KITCHEN.map((k) => `<a class="arch-card" href="${esc(k.href)}">
-      <div class="date">${esc(k.date || "")}</div>
-      <div class="t">🍳 ${esc(k.title || "")}</div>
-      ${k.meta ? `<div class="m">${esc(k.meta)}</div>` : ""}
-    </a>`).join("\n")
-    : "";
-  if (!courses.length) {
+
+  if (!all.length) {
     return head + `<p class="subtitle">아직 저장된 코스가 없어요.</p>
       <div class="empty"><p>코스를 만들면 여기에 하나씩 쌓여 지난 데이트를 다시 볼 수 있어요.</p>
-      <p class="hint">저장: <code>save_course.py</code></p></div>` + kitchen;
+      <p class="hint">저장: <code>save_course.py</code></p></div>`;
   }
-  const cards = courses.map((c) => `<a class="arch-card" href="?c=${encodeURIComponent(c.slug)}">
-      <div class="date">${esc(c.date || "")}</div>
-      <div class="t">${esc(c.title || "데이트 코스")}</div>
-      ${c.meta ? `<div class="m">${esc(c.meta)}</div>` : ""}
-    </a>`).join("\n");
-  return head + `<p class="subtitle">지난 코스 ${courses.length}개</p>\n${cards}` + kitchen;
+
+  const chips = renderFilterChips(all, filter);
+  const shown = filterEntries(all, filter);
+  if (!shown.length) {
+    return head + chips + `<div class="empty"><p>이 조건에 맞는 기록이 없어요.</p>
+      <p><a href=".">전체 보기</a></p></div>`;
+  }
+
+  const groups = groupByYear(shown);
+  const showYear = groups.length > 1;   // 연도가 하나뿐이면 헤딩은 소음이다
+  const body = groups
+    .map(([y, es]) =>
+      (showYear ? `<h2 class="year">${esc(y)}</h2>\n` : "") +
+      es.map(renderArchCard).join("\n"))
+    .join("\n");
+  return head + chips + `<p class="subtitle">기록 ${shown.length}개</p>\n${body}`;
 }
 
 function factorBlock(label, text) {
@@ -304,10 +329,13 @@ async function main() {
       app().innerHTML = renderFactorIndex([...factors.values()]);
       return;
     }
-    // 홈: 우리 데이트 기록
+    // 홈: 우리 데이트 기록 (?r=지역 / ?t=태그는 이 분기의 하위 상태)
     let index = { courses: [] };
     try { index = await fetchJSON("courses/index.json"); } catch {}
-    app().innerHTML = renderArchive(index);
+    let filter = null;
+    if (params.has("r")) filter = { type: "r", value: params.get("r") };
+    else if (params.has("t")) filter = { type: "t", value: params.get("t") };
+    app().innerHTML = renderArchive(index, filter);
   } catch (e) {
     showMessage(`<h1>⚠️ 열 수 없어요</h1>
       <p>링크가 손상됐거나 코스를 찾지 못했습니다.</p>
@@ -318,6 +346,17 @@ async function main() {
 
 window.addEventListener("hashchange", main);
 window.addEventListener("popstate", main);
+/* 필터 칩은 이동 대신 URL만 바꾸고 다시 그린다(모바일에서 즉시 반응).
+   href는 진짜 링크로 남겨 두어 새 탭·공유·크롤링이 그대로 동작한다.
+   뒤로가기는 위의 popstate 리스너가 받는다. */
+document.addEventListener("click", (ev) => {
+  if (ev.defaultPrevented || ev.button !== 0 || ev.metaKey || ev.ctrlKey || ev.shiftKey || ev.altKey) return;
+  const a = ev.target.closest && ev.target.closest("a.fchip");
+  if (!a) return;
+  ev.preventDefault();
+  history.pushState(null, "", a.getAttribute("href"));
+  main();
+});
 main();
 
 /* 서비스워커 등록(오프라인/설치) — 실패해도 앱은 동작 */
