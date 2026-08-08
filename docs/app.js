@@ -9,6 +9,50 @@
 
 const BADGE = { peak: ["🎯", "피크"], finale: ["🏁", "피날레"] };
 
+/* ---------- 아카이브 홈: 순수 로직 ---------- */
+
+/* 지역 이름 → 색상 각도(0~359). 팔레트를 손으로 관리하지 않으려는 것 —
+   새 지역이 와도 색이 자동으로 정해지고, 채도·밝기는 CSS가 고정해 톤이 통일된다. */
+function regionHue(name) {
+  let h = 0;
+  for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) >>> 0;
+  return h % 360;
+}
+
+/* 부엌 페이지는 SPA 라우팅 밖의 독립 HTML이라 ?c= 가 아니라 실제 경로로 간다. */
+function entryHref(e) {
+  return e.kind === "kitchen" ? e.href : "?c=" + encodeURIComponent(e.slug);
+}
+
+function filterEntries(entries, filter) {
+  if (!filter) return entries;
+  if (filter.type === "r") return entries.filter((e) => e.region === filter.value);
+  return entries.filter((e) => (e.tags || []).includes(filter.value));
+}
+
+/* 목록에 실제로 존재하는 값만 모은다(등장 순서 유지).
+   어휘 전체를 칩으로 깔면 결과가 0건인 죽은 버튼이 생긴다. */
+function collectFilterValues(entries) {
+  const regions = [];
+  const tags = [];
+  for (const e of entries) {
+    if (e.region && !regions.includes(e.region)) regions.push(e.region);
+    for (const t of e.tags || []) if (!tags.includes(t)) tags.push(t);
+  }
+  return { regions, tags };
+}
+
+/* [[연도, 항목들], ...] 연도 내림차순. 연도 안의 순서는 입력 순서 그대로. */
+function groupByYear(entries) {
+  const map = new Map();
+  for (const e of entries) {
+    const y = (e.date || "").slice(0, 4) || "?";
+    if (!map.has(y)) map.set(y, []);
+    map.get(y).push(e);
+  }
+  return [...map.entries()].sort((a, b) => (a[0] < b[0] ? 1 : -1));
+}
+
 /* 부엌 — SPA 라우팅 밖의 독립 정적 페이지. 늘어나면 여기에 한 줄 추가한다.
    ⚠️ sw.js의 navigate 예외(`/kitchen/`)와 짝이다. 경로를 바꾸면 거기도 같이 고칠 것 —
       예외가 없으면 SW가 앱 셸을 돌려줘서 링크를 눌러도 이 홈이 다시 뜬다. */
