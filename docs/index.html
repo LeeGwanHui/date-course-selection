@@ -20,12 +20,12 @@
   @media (prefers-color-scheme: dark) {
     :root { --bg:#1a161c; --card:#241f28; --ink:#f2ecf0; --muted:#a99fa8;
             --line:#3a3340; --accent:#ff7a90; }
-    .cover { background:linear-gradient(140deg, hsl(var(--hue) 44% 44%), hsl(var(--hue) 42% 32%)); }
+    .cover:not(.no-region) { background:linear-gradient(140deg, hsl(var(--hue) 44% 44%), hsl(var(--hue) 42% 32%)); }
   }
   :root[data-theme="light"] { --bg:#fbf7f5; --card:#fff; --ink:#2b2431; --muted:#7a6f78; --line:#ecdfe2; }
   :root[data-theme="dark"]  { --bg:#1a161c; --card:#241f28; --ink:#f2ecf0; --muted:#a99fa8; --line:#3a3340; --accent:#ff7a90; }
-  :root[data-theme="light"] .cover { background:linear-gradient(140deg, hsl(var(--hue) 60% 80%), hsl(var(--hue) 55% 64%)); }
-  :root[data-theme="dark"]  .cover { background:linear-gradient(140deg, hsl(var(--hue) 44% 44%), hsl(var(--hue) 42% 32%)); }
+  :root[data-theme="light"] .cover:not(.no-region) { background:linear-gradient(140deg, hsl(var(--hue) 60% 80%), hsl(var(--hue) 55% 64%)); }
+  :root[data-theme="dark"]  .cover:not(.no-region) { background:linear-gradient(140deg, hsl(var(--hue) 44% 44%), hsl(var(--hue) 42% 32%)); }
   * { box-sizing: border-box; }
   body { margin:0; padding:24px 16px 48px; background:var(--bg); color:var(--ink);
     font-family: -apple-system, "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", sans-serif;
