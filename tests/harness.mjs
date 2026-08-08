@@ -18,7 +18,10 @@ export function loadApp() {
     TextDecoder,
     console,
     // app.js 하단의 main()이 즉시 돌면서 index.json을 부른다.
-    // 실패시켜 catch 분기로 보내고(오류 화면), 테스트는 함수를 직접 호출한다.
+    // location이 기본값(빈 hash/search)이면 홈 라우트를 타는데, 거기는 index.json
+    // fetch 실패를 자체 try{}catch{}로 삼켜 빈 아카이브를 그린다(오류 화면 아님).
+    // #frag / ?c= / ?f= 라우트는 바깥 catch로 올라가 오류 화면이 뜬다.
+    // 테스트는 함수를 직접 호출하므로 어느 쪽이든 실행에 지장은 없다.
     fetch: async () => { throw new Error("no network in tests"); },
   };
   ctx.globalThis = ctx;

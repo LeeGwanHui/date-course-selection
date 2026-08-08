@@ -134,3 +134,13 @@ test("아카이브가 비면 필터 칩 없이 빈 상태만", () => {
   assert.ok(html.includes("아직 저장된 코스가 없어요"));
   assert.ok(!html.includes("fchips"));
 });
+
+test("이모지로 시작하는 제목도 커버 글리프가 깨지지 않는다", () => {
+  const html = app.renderArchCard({ slug: "x", title: "🍳 집마카세", date: "2026-08-02" });
+  assert.ok(html.includes(">🍳<"));
+  assert.ok(!html.includes("\ud83c<"));   // 서로게이트 반쪽이 새어나오면 안 된다
+});
+
+test("href 없는 부엌 항목은 죽은 링크 대신 ?c=로 떨어진다", () => {
+  assert.equal(app.entryHref({ kind: "kitchen", slug: "x" }), "?c=x");
+});

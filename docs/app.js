@@ -21,7 +21,7 @@ function regionHue(name) {
 
 /* 부엌 페이지는 SPA 라우팅 밖의 독립 HTML이라 ?c= 가 아니라 실제 경로로 간다. */
 function entryHref(e) {
-  return e.kind === "kitchen" ? e.href : "?c=" + encodeURIComponent(e.slug);
+  return e.kind === "kitchen" && e.href ? e.href : "?c=" + encodeURIComponent(e.slug);
 }
 
 function filterEntries(entries, filter) {
@@ -207,7 +207,7 @@ function nav(links) {
 }
 
 function renderArchCard(e) {
-  const emoji = esc(e.emoji || String(e.title || "?").trim().charAt(0));
+  const emoji = esc(e.emoji || [...String(e.title || "?").trim()][0] || "?");
   const hue = e.region ? regionHue(e.region) : 0;
   const coverCls = e.region ? "cover" : "cover no-region";
 
@@ -232,7 +232,7 @@ function renderFilterChips(entries, filter) {
   const { regions, tags } = collectFilterValues(entries);
   if (!regions.length && !tags.length) return "";
   const chip = (label, href, on) =>
-    `<a class="fchip${on ? " on" : ""}" href="${href}">${esc(label)}</a>`;
+    `<a class="fchip${on ? " on" : ""}" href="${esc(href)}">${esc(label)}</a>`;
   const isOn = (type, v) => !!filter && filter.type === type && filter.value === v;
   const bits = [chip("전체", ".", !filter)];
   for (const r of regions) bits.push(chip(r, "?r=" + encodeURIComponent(r), isOn("r", r)));
