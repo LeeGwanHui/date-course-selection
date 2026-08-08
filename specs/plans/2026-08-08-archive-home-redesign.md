@@ -849,7 +849,10 @@ sw.js의 /kitchen/ 예외는 별개 문제라 그대로 뒀다."
   .bdgs { display:flex; flex-wrap:wrap; gap:5px; margin-top:8px; }
   .bdg { font-size:.72rem; padding:2px 8px; border-radius:999px;
     border:1px solid var(--line); color:var(--muted); }
-  .bdg-region { border-color:transparent; color:#fff; background:hsl(var(--hue) 42% 46%); }
+  /* 명도 34%는 측정으로 정한 값이다. HSL 명도가 같아도 체감 밝기는 색상마다 크게 달라서,
+     46%에서는 흰 글씨 대비가 지역에 따라 2.80~5.66으로 흩어져 6개 중 5개가 WCAG AA(4.5:1)에
+     미달했다. 34%면 최저가 4.83이라 어느 색상이 와도 통과한다. */
+  .bdg-region { border-color:transparent; color:#fff; background:hsl(var(--hue) 42% 34%); }
   .bdg-icon { border-color:transparent; padding:2px 5px; }
   /* --- 필터 칩 --- */
   .fchips { display:flex; flex-wrap:wrap; gap:6px; margin:0 0 16px; }
