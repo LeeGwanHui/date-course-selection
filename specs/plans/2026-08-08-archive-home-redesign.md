@@ -411,6 +411,11 @@ export function loadApp() {
   ctx.__el = el;
   return ctx;
 }
+
+/* vm 컨텍스트는 자기만의 Array 인트린식을 갖는다. 그 안에서 만들어진 배열은
+   구조가 같아도 deepStrictEqual을 통과하지 못한다(프로토타입이 다르다).
+   vm에서 나온 값은 이걸로 테스트 realm으로 옮겨서 비교한다. */
+export const plain = (v) => JSON.parse(JSON.stringify(v));
 ```
 
 - [ ] **Step 2: 실패하는 테스트 작성**
@@ -420,7 +425,7 @@ export function loadApp() {
 ```js
 import test from "node:test";
 import assert from "node:assert/strict";
-import { loadApp } from "./harness.mjs";
+import { loadApp, plain } from "./harness.mjs";
 
 const app = loadApp();
 const ENTRY = (o) => ({ slug: "s", title: "T", date: "2026-08-08", ...o });
@@ -450,9 +455,9 @@ test("filterEntries: 필터 없으면 전부, 있으면 지역/태그로 거른�
     ENTRY({ slug: "b", region: "신사", tags: ["카페", "산책"] }),
     ENTRY({ slug: "c" }),                       // region/tags 없는 항목
   ];
-  assert.deepEqual(app.filterEntries(es, null).map((e) => e.slug), ["a", "b", "c"]);
-  assert.deepEqual(app.filterEntries(es, { type: "r", value: "홍대" }).map((e) => e.slug), ["a"]);
-  assert.deepEqual(app.filterEntries(es, { type: "t", value: "산책" }).map((e) => e.slug), ["b"]);
+  assert.deepEqual(plain(app.filterEntries(es, null).map((e) => e.slug)), ["a", "b", "c"]);
+  assert.deepEqual(plain(app.filterEntries(es, { type: "r", value: "홍대" }).map((e) => e.slug)), ["a"]);
+  assert.deepEqual(plain(app.filterEntries(es, { type: "t", value: "산책" }).map((e) => e.slug)), ["b"]);
 });
 
 test("collectFilterValues는 존재하는 값만 등장 순서대로, 중복 없이 모은다", () => {
@@ -462,8 +467,8 @@ test("collectFilterValues는 존재하는 값만 등장 순서대로, 중복 없
     ENTRY({ region: "신사" }),
     ENTRY({}),
   ]);
-  assert.deepEqual(regions, ["홍대", "신사"]);
-  assert.deepEqual(tags, ["실내", "맛집"]);
+  assert.deepEqual(plain(regions), ["홍대", "신사"]);
+  assert.deepEqual(plain(tags), ["실내", "맛집"]);
 });
 
 test("groupByYear는 연도 내림차순으로 묶고 항목 순서를 유지한다", () => {
@@ -473,7 +478,7 @@ test("groupByYear는 연도 내림차순으로 묶고 항목 순서를 유지한
     ENTRY({ slug: "c", date: "2026-07-25" }),
   ]);
   assert.deepEqual(
-    g.map(([y, es]) => [y, es.map((e) => e.slug)]),
+    plain(g).map(([y, es]) => [y, es.map((e) => e.slug)]),
     [["2027", ["b"]], ["2026", ["a", "c"]]],
   );
 });
@@ -481,7 +486,7 @@ test("groupByYear는 연도 내림차순으로 묶고 항목 순서를 유지한
 
 - [ ] **Step 3: 테스트가 실패하는지 확인**
 
-Run: `node --test tests/`
+Run: `node --test tests/*.test.mjs`
 Expected: FAIL — `app.regionHue is not a function`
 
 - [ ] **Step 4: `docs/app.js`에 순수 함수 5개 추가**
@@ -536,7 +541,7 @@ function groupByYear(entries) {
 
 - [ ] **Step 5: 테스트 통과 확인**
 
-Run: `node --test tests/`
+Run: `node --test tests/*.test.mjs`
 Expected: PASS (6 tests)
 
 - [ ] **Step 6: 브라우저에서 회귀 없는지 확인**
@@ -661,7 +666,7 @@ test("아카이브가 비면 필터 칩 없이 빈 상태만", () => {
 
 - [ ] **Step 2: 테스트가 실패하는지 확인**
 
-Run: `node --test tests/`
+Run: `node --test tests/*.test.mjs`
 Expected: 기존 6개 PASS, 새 9개 FAIL — `app.renderArchCard is not a function`
 
 - [ ] **Step 3: `KITCHEN` 상수를 삭제한다**
@@ -781,7 +786,7 @@ document.addEventListener("click", (ev) => {
 
 - [ ] **Step 7: 테스트 통과 확인**
 
-Run: `node --test tests/`
+Run: `node --test tests/*.test.mjs`
 Expected: PASS (15 tests)
 
 - [ ] **Step 8: 커밋**
@@ -1043,7 +1048,7 @@ const CACHE = "date-course-v6";
 
 - [ ] **Step 5: JS 테스트가 여전히 통과하는지 확인**
 
-Run: `node --test tests/`
+Run: `node --test tests/*.test.mjs`
 Expected: PASS (15 tests) — 테스트는 픽스처를 쓰므로 실제 데이터와 무관하지만 회귀 확인용
 
 - [ ] **Step 6: 커밋**
@@ -1111,7 +1116,7 @@ Expected: 변경 없음 (임시 항목을 지웠으므로)
 
 - [ ] **Step 4: 서버를 끄고 전체 테스트를 돌린다**
 
-Run: `python3 -m pytest tests/ -v && node --test tests/`
+Run: `python3 -m pytest tests/ -v && node --test tests/*.test.mjs`
 Expected: pytest 11 passed, node 15 tests pass
 
 - [ ] **Step 5: `CLAUDE.md`를 갱신한다**
@@ -1137,7 +1142,7 @@ Expected: pytest 11 passed, node 15 tests pass
 "Three helper scripts" 문단 아래에 테스트 실행법을 추가한다:
 
 ```
-- **Tests**: `python3 -m pytest tests/` (save_course.py) and `node --test tests/` (archive home logic in `docs/app.js`). No npm dependencies — `tests/harness.mjs` evaluates `app.js` in `node:vm` with a minimal DOM stub, because `app.js` is a build-free global script and must stay that way.
+- **Tests**: `python3 -m pytest tests/` (save_course.py) and `node --test tests/*.test.mjs` (archive home logic in `docs/app.js`). No npm dependencies — `tests/harness.mjs` evaluates `app.js` in `node:vm` with a minimal DOM stub, because `app.js` is a build-free global script and must stay that way.
 ```
 
 - [ ] **Step 6: 커밋**
