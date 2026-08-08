@@ -867,15 +867,20 @@ sw.js의 /kitchen/ 예외는 별개 문제라 그대로 뒀다."
 한 줄을 넣는다. 밝은 파스텔 그라디언트가 다크에서 눈을 찌르는 걸 막는다:
 
 ```css
-    .cover { background:linear-gradient(140deg, hsl(var(--hue) 44% 44%), hsl(var(--hue) 42% 32%)); }
+    .cover:not(.no-region) { background:linear-gradient(140deg, hsl(var(--hue) 44% 44%), hsl(var(--hue) 42% 32%)); }
 ```
 
 그리고 수동 테마 오버라이드 두 줄 뒤에 대응 규칙을 붙인다 (`:root[data-theme=...]` 줄들 아래):
 
 ```css
-  :root[data-theme="light"] .cover { background:linear-gradient(140deg, hsl(var(--hue) 60% 80%), hsl(var(--hue) 55% 64%)); }
-  :root[data-theme="dark"]  .cover { background:linear-gradient(140deg, hsl(var(--hue) 44% 44%), hsl(var(--hue) 42% 32%)); }
+  :root[data-theme="light"] .cover:not(.no-region) { background:linear-gradient(140deg, hsl(var(--hue) 60% 80%), hsl(var(--hue) 55% 64%)); }
+  :root[data-theme="dark"]  .cover:not(.no-region) { background:linear-gradient(140deg, hsl(var(--hue) 44% 44%), hsl(var(--hue) 42% 32%)); }
 ```
+
+⚠️ `:not(.no-region)`은 필수다. `:root[data-theme="dark"] .cover`의 특이도는 **(0,3,0)**
+이라 `.cover.no-region`의 **(0,2,0)**을 이겨버린다. 그러면 지역 없는 카드가 회색이 아니라
+`hsl(0 …)` 붉은 그라디언트로 뜬다. 미디어 쿼리 안의 규칙은 (0,1,0)이라 원래는 안 걸리지만,
+셋을 같은 모양으로 맞춰 다음에 이 패턴이 다시 깨지지 않게 한다.
 
 - [ ] **Step 3: 브라우저에서 확인한다**
 
