@@ -2,7 +2,7 @@
    - 셸(index.html, app.js, manifest, 아이콘, factors.json): 캐시 우선 + 프리캐시 → 오프라인/설치.
    - 내비게이션(?c=, ?f= 포함): 셸(index.html)을 돌려줘 SPA 라우팅이 오프라인에서도 동작.
    - JSON 데이터(courses/, factors.json): 네트워크 우선 + 캐시 폴백(최신 우선, 오프라인 대비 캐시). */
-const CACHE = "date-course-v6";
+const CACHE = "date-course-v7";
 const SHELL = [
   ".", "index.html", "app.js", "manifest.webmanifest",
   "icon-192.png", "icon-512.png", "factors.json",
